@@ -1,8 +1,19 @@
 import { NextFunction, Request, Response } from 'express';
-import Card from '../models/card';
-import { IAuthRequest } from '../types';
+import { UpdateQuery } from 'mongoose';
+import Card, { ICard } from '../models/card';
 import NotFoundError from '../helpers/notFoundError';
 import errorMessages from '../constans/errorMessages';
+
+const updateLike = (
+  cardId: string,
+  userId: string,
+  updateType: 'like' | 'dislike',
+) => {
+  const updateQuery: UpdateQuery<ICard> = updateType === 'like'
+    ? { $addToSet: { likes: userId } }
+    : { $pull: { likes: userId } };
+  return Card.findByIdAndUpdate(cardId, updateQuery, { new: true });
+};
 
 export default class CardControllers {
   static getAllCard = (req: Request, res: Response, next: NextFunction) => {
@@ -11,7 +22,7 @@ export default class CardControllers {
       .catch(next);
   };
 
-  static createCard = (req: IAuthRequest, res: Response, next: NextFunction) => {
+  static createCard = (req: Request, res: Response, next: NextFunction) => {
     const { user } = req;
     const { name, link } = req.body;
     Card.create({
@@ -21,35 +32,39 @@ export default class CardControllers {
     }).then((cardData) => res.status(201).send(cardData)).catch(next);
   };
 
-  static deleteCard = (req: IAuthRequest, res: Response, next: NextFunction) => {
+  static deleteCard = (req: Request, res: Response, next: NextFunction) => {
     const { cardId } = req.params;
-    Card.exists({ _id: cardId }).then((result) => {
-      if (!result) {
-        return Promise.reject(new NotFoundError(errorMessages.cardNotFound));
-      }
-      return Card.findByIdAndDelete(cardId);
-    }).then(() => res.status(200).send({ status: 'OK' })).catch(next);
+    Card.findByIdAndDelete(cardId)
+      .then((card) => {
+        if (!card) {
+          throw new NotFoundError(errorMessages.cardNotFound);
+        }
+      })
+      .then(() => res.status(200).send({ status: 'OK' }))
+      .catch(next);
   };
 
-  static likeCard = (req: IAuthRequest, res: Response, next: NextFunction) => {
+  static likeCard = (req: Request, res: Response, next: NextFunction) => {
     const { user, params } = req;
-    Card.exists({ _id: params.cardId }).then((result) => {
-      if (!result) {
-        throw new NotFoundError('Карточка с указанным _id не найдена.');
-      }
-      Card.findByIdAndUpdate(params.cardId, { $addToSet: { likes: user?._id } }, { new: true })
-        .then((card) => res.send(card));
-    }).catch(next);
+    updateLike(params.cardId, user._id, 'like')
+      .then((card) => {
+        if (!card) {
+          throw new NotFoundError(errorMessages.likeCardValidation);
+        }
+        res.send(card);
+      })
+      .catch(next);
   };
 
-  static dislikeCard = (req: IAuthRequest, res: Response, next: NextFunction) => {
+  static dislikeCard = (req: Request, res: Response, next: NextFunction) => {
     const { user, params: { cardId } } = req;
-    Card.exists({ _id: cardId }).then((result) => {
-      if (!result) {
-        throw new NotFoundError('Передан несуществующий _id карточки');
-      }
-      Card.findByIdAndUpdate(cardId, { $pull: { likes: user?._id } }, { new: true })
-        .then((card) => res.send(card));
-    }).catch(next);
+    updateLike(cardId, user._id, 'dislike')
+      .then((card) => {
+        if (!card) {
+          throw new NotFoundError(errorMessages.likeCardValidation);
+        }
+        res.send(card);
+      })
+      .catch(next);
   };
 }

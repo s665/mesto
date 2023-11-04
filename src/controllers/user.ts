@@ -1,8 +1,12 @@
-import { NextFunction, Request, Response } from 'express';
+import { NextFunction, Response, Request } from 'express';
 import User from '../models/user';
-import { IAuthRequest } from '../types';
 import NotFoundError from '../helpers/notFoundError';
 import errorMessages from '../constans/errorMessages';
+
+const updateUserById = (
+  userId: string | undefined,
+  updateField: any,
+) => User.findByIdAndUpdate(userId, updateField, { new: true });
 
 export default class UserControllers {
   static getAllUsers = (req: Request, res: Response, next: NextFunction) => {
@@ -13,7 +17,7 @@ export default class UserControllers {
       .catch(next);
   };
 
-  static getUserById = (req: IAuthRequest, res: Response, next: NextFunction) => {
+  static getUserById = (req: Request, res: Response, next: NextFunction) => {
     User.findById(req.params.userId)
       .then((userData) => {
         if (!userData) {
@@ -34,18 +38,15 @@ export default class UserControllers {
       .catch(next);
   };
 
-  static patchUser = (req: IAuthRequest, res: Response, next: NextFunction) => {
-    const { user } = req;
-    const { about, name } = req.body;
-    User.findByIdAndUpdate(user?._id, { about, name }, { new: true })
+  static patchUser = (req: Request, res: Response, next: NextFunction) => {
+    updateUserById(req?.user?._id, req.body)
       .then((userData) => res.status(200).send(userData))
       .catch(next);
   };
 
-  static patchAvatarUser = (req: IAuthRequest, res: Response, next: NextFunction) => {
+  static patchAvatarUser = (req: Request, res: Response, next: NextFunction) => {
     const { user } = req;
-    const { avatar } = req.body;
-    User.findByIdAndUpdate(user?._id, { avatar }, { new: true })
+    updateUserById(user?._id, req.body)
       .then((userData) => res.status(200).send(userData))
       .catch(next);
   };

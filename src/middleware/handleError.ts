@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import { errors, isCelebrateError } from 'celebrate';
+import { isCelebrateError } from 'celebrate';
 import NotFoundError from '../helpers/notFoundError';
 
 const handleError = (

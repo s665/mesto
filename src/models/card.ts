@@ -3,7 +3,7 @@ import mongoose, { Schema } from 'mongoose';
 import { celebrate } from 'celebrate';
 import errorMessages from '../constans/errorMessages';
 
-interface ICard {
+export interface ICard {
   name: string,
   link: string,
   owner: Schema.Types.ObjectId,
