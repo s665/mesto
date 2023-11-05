@@ -28,13 +28,13 @@ export default class CardControllers {
     Card.create({
       name,
       link,
-      owner: user?._id,
+      owner: user._id,
     }).then((cardData) => res.status(201).send(cardData)).catch(next);
   };
 
   static deleteCard = (req: Request, res: Response, next: NextFunction) => {
     const { cardId } = req.params;
-    Card.findByIdAndDelete(cardId)
+    Card.findOneAndDelete({ _id: cardId, owner: req.user._id })
       .then((card) => {
         if (!card) {
           throw new NotFoundError(errorMessages.cardNotFound);

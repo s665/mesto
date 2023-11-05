@@ -1,4 +1,6 @@
-import { NextFunction, Response, Request } from 'express';
+import { NextFunction, Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import User from '../models/user';
 import NotFoundError from '../helpers/notFoundError';
 import errorMessages from '../constans/errorMessages';
@@ -8,7 +10,24 @@ const updateUserById = (
   updateField: any,
 ) => User.findByIdAndUpdate(userId, updateField, { new: true });
 
+const { SALT = 'secret' } = process.env;
+
 export default class UserControllers {
+  static login = (req: Request, res: Response, next: NextFunction) => {
+    const { email, password } = req.body;
+
+    User.findUserByCredentials(email, password)
+      .then((user) => {
+        const token = jwt.sign(
+          { _id: user._id },
+          SALT,
+          { expiresIn: '7d' },
+        );
+        res.send({ token });
+      })
+      .catch(next);
+  };
+
   static getAllUsers = (req: Request, res: Response, next: NextFunction) => {
     User.find({})
       .then((userData) => {
@@ -29,16 +48,22 @@ export default class UserControllers {
   };
 
   static createUser = (req: Request, res: Response, next: NextFunction) => {
-    const { about, name, avatar } = req.body;
-    User.create({
-      about,
-      avatar,
-      name,
-    }).then((user) => res.status(201).send(user))
+    const { password } = req.body;
+    bcrypt.hash(password, 10)
+      .then((hash) => User.create({
+        ...req.body,
+        password: hash,
+      }))
+      .then((user) => {
+        if (user) {
+          res.status(201).send({ message: 'Пользователь успешно создан' });
+        }
+      })
       .catch(next);
   };
 
   static patchUser = (req: Request, res: Response, next: NextFunction) => {
+    console.log(req.user._id);
     updateUserById(req?.user?._id, req.body)
       .then((userData) => res.status(200).send(userData))
       .catch(next);

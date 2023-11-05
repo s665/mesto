@@ -2,6 +2,7 @@ import Joi from 'joi';
 import mongoose, { Schema } from 'mongoose';
 import { celebrate } from 'celebrate';
 import errorMessages from '../constans/errorMessages';
+import regexp from '../helpers/regexp';
 
 export interface ICard {
   name: string,
@@ -21,6 +22,10 @@ const cardSchema = new mongoose.Schema<ICard>({
   link: {
     type: String,
     required: true,
+    validate: {
+      validator: (v: string) => regexp.urlPattern.test(v),
+      message: ({ value }) => `${value}: ${errorMessages.invalidUrl}`,
+    },
   },
   owner: {
     type: Schema.Types.ObjectId,
@@ -42,8 +47,7 @@ export class CardValidationRule {
   static createCard = celebrate({
     body: Joi.object().keys({
       name: Joi.string().required().min(2).max(30),
-      link: Joi.string().required(),
-      owner: Joi.string().required().hex().length(24),
+      link: Joi.string().required().regex(regexp.urlPattern).message(errorMessages.invalidUrl),
     }),
   }, { messages: { '*': errorMessages.createCardValidation } });
 
